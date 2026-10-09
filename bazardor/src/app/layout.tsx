@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AppToaster from "@/components/app-toaster";
 
 export const metadata: Metadata = {
   title: "বাজার দর | আজকের বাজারের দাম",
@@ -13,8 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn">
-      <body>{children}</body>
+    <html lang="bn" data-scroll-behavior="smooth">
+      <body>
+        {children}
+        <AppToaster />
+      </body>
     </html>
   );
 }
