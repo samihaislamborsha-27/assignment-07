@@ -1,4 +1,4 @@
-﻿[build]
+[build]
   base = "bazardor"
   command = "npm run build"
   publish = ".next"
