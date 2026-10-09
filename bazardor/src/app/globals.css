@@ -35,11 +35,19 @@ button {
   outline: 3px solid #15803d;
   outline-offset: 4px;
 }
-
 .ticker-track {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   width: max-content;
   animation: ticker 70s linear infinite;
+}
+
+.ticker-track > div {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .ticker:hover .ticker-track,

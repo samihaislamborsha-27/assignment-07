@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import AccountShell from "@/components/account-shell";
 
 type Product = {
   id: number;
   slug: string;
   nameBn: string;
   category: string;
-  categoryNameBn: string;
-  categoryIcon: string;
+  categoryNameBn?: string;
+  categoryIcon?: string;
   unit: string;
   image: string;
   today: number;
@@ -25,20 +25,10 @@ const API_URLS = [
   "https://api.abcz.workers.dev/api/bazardor",
 ];
 
-const categories = [
-  { slug: "chal", name: "চাল", icon: "🍚" },
-  { slug: "dal", name: "ডাল", icon: "🫘" },
-  { slug: "tel", name: "তেল", icon: "🛢️" },
-  { slug: "sobji", name: "সবজি", icon: "🥬" },
-  { slug: "mach", name: "মাছ", icon: "🐟" },
-  { slug: "mangsho", name: "মাংস", icon: "🍗" },
-  { slug: "dim-dui", name: "ডিম-দুধ", icon: "🥛" },
-  { slug: "mosla", name: "মসলা", icon: "🌶️" },
-];
-
 const units: Record<string, string> = {
   kg: "কেজি",
   litre: "লিটার",
+  liter: "লিটার",
   dozen: "ডজন",
   piece: "পিস",
 };
@@ -52,14 +42,15 @@ function banglaNumber(value: number, decimals = 0) {
 
 function ChangeBadge({ product }: { product: Product }) {
   const direction = product.change.dir;
+
   const symbol =
     direction === "up" ? "▲" : direction === "down" ? "▼" : "—";
 
   const color =
     direction === "up"
-      ? "bg-green-50 text-green-700"
+      ? "bg-red-50 text-red-700"
       : direction === "down"
-        ? "bg-red-50 text-red-700"
+        ? "bg-green-50 text-green-700"
         : "bg-gray-100 text-gray-600";
 
   return (
@@ -78,8 +69,11 @@ function ProductCard({ product }: { product: Product }) {
       className="block rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-green-700 hover:shadow-sm"
     >
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f3f5ef] text-3xl">
-          {product.image}
+        <span
+          aria-hidden="true"
+          className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-stone-50 text-3xl"
+        >
+          {product.image || product.categoryIcon || "🛒"}
         </span>
 
         <div className="min-w-0">
@@ -90,7 +84,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
 
-      <div className="mt-5 flex items-end justify-between gap-2">
+      <div className="mt-5 flex items-end justify-between gap-3">
         <div>
           <p className="text-sm text-gray-500">আজকের দাম</p>
           <p className="mt-1 text-xl font-bold">
@@ -108,27 +102,47 @@ function ProductCard({ product }: { product: Product }) {
 function ProductSection({
   title,
   products,
+  direction,
   subtitle,
   id,
 }: {
   title: string;
   products: Product[];
+  direction?: "up" | "down";
   subtitle?: string;
   id?: string;
 }) {
   return (
     <section id={id} className="scroll-mt-6">
-      <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
+      <h2 className="flex items-center gap-2 text-xl font-bold sm:text-2xl">
+        {direction && (
+          <span
+            aria-hidden="true"
+            className={
+              direction === "up" ? "text-red-600" : "text-green-700"
+            }
+          >
+            {direction === "up" ? "▲" : "▼"}
+          </span>
+        )}
+        {title}
+      </h2>
 
       {subtitle && (
-        <p className="mt-2 text-gray-500">{subtitle}</p>
+        <p className="mt-2 text-sm text-gray-600">{subtitle}</p>
       )}
 
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <p className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
+          এই তালিকায় এখন কোনো পণ্য নেই।
+        </p>
+      ) : (
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -146,12 +160,14 @@ function SkeletonGrid() {
           className="h-40 animate-pulse rounded-2xl border border-gray-200 bg-white p-5"
         >
           <div className="flex gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gray-200" />
+            <div className="size-12 rounded-xl bg-gray-200" />
+
             <div className="flex-1">
               <div className="h-5 w-3/4 rounded bg-gray-200" />
               <div className="mt-3 h-3 w-1/3 rounded bg-gray-100" />
             </div>
           </div>
+
           <div className="mt-5 h-6 w-1/2 rounded bg-gray-200" />
         </div>
       ))}
@@ -185,18 +201,28 @@ export default function Home() {
             signal: controller.signal,
           });
 
-          if (!response.ok) {
-            throw new Error("Products request failed");
-          }
+          if (!response.ok) continue;
 
-          const data: Product[] = await response.json();
+          const body = await response.json();
 
-          if (!Array.isArray(data)) {
-            throw new Error("Invalid product response");
-          }
+          const list = Array.isArray(body)
+            ? body
+            : body.products ?? body.data?.products ?? body.data;
+
+          if (!Array.isArray(list)) continue;
+
+          const validProducts: Product[] = list.filter(
+            (product) =>
+              product &&
+              typeof product.nameBn === "string" &&
+              typeof product.today === "number" &&
+              typeof product.slug === "string" &&
+              product.change &&
+              typeof product.change.pct === "number",
+          );
 
           if (!controller.signal.aborted) {
-            setProducts(data);
+            setProducts(validProducts);
             setLoading(false);
           }
 
@@ -217,18 +243,55 @@ export default function Home() {
     return () => controller.abort();
   }, [attempt]);
 
-  const risers = products
-    .filter((product) => product.change.dir === "up")
-    .sort((a, b) => b.change.pct - a.change.pct)
-    .slice(0, 6);
+  const risingProducts = products.filter(
+    (product) => product.change.dir === "up",
+  );
 
-  const fallers = products
-    .filter((product) => product.change.dir === "down")
+  const fallingProducts = products.filter(
+    (product) => product.change.dir === "down",
+  );
+
+  const risers = [...risingProducts]
     .sort(
       (a, b) =>
         Math.abs(b.change.pct) - Math.abs(a.change.pct),
     )
     .slice(0, 6);
+
+  const fallers = [...fallingProducts]
+    .sort(
+      (a, b) =>
+        Math.abs(b.change.pct) - Math.abs(a.change.pct),
+    )
+    .slice(0, 6);
+
+  const categoryCount = new Set(
+    products
+      .map((product) =>
+        product.category === "dim-dui"
+          ? "dim-dudh"
+          : product.category,
+      )
+      .filter(Boolean),
+  ).size;
+
+  const stats = [
+    {
+      label: "পণ্য",
+      value: products.length,
+      description: "টি নিত্যপ্রয়োজনীয় পণ্য",
+    },
+    {
+      label: "বিভাগ",
+      value: categoryCount,
+      description: "টি পণ্যের বিভাগ",
+    },
+    {
+      label: "বেড়েছে",
+      value: risingProducts.length,
+      description: "টি পণ্যের দাম",
+    },
+  ];
 
   function retry() {
     setError("");
@@ -237,130 +300,47 @@ export default function Home() {
   }
 
   return (
-    <>
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 py-5">
-            <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/logo-icon.png"
-                alt=""
-                width={44}
-                height={44}
-                className="rounded-xl"
-              />
-              <div>
-                <p className="text-2xl font-bold text-[#174b2b]">
-                  বাজার দর
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  {date || "আজকের বাজারের তথ্য"}
-                </p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/signin"
-                className="rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 sm:text-base"
-              >
-                সাইন ইন
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-[#174b2b] px-4 py-2 text-sm font-semibold text-white hover:bg-green-900 sm:text-base"
-              >
-                সাইন আপ
-              </Link>
-            </div>
-          </div>
-
-          <nav
-            aria-label="পণ্যের বিভাগ"
-            className="flex gap-2 overflow-x-auto pb-3"
-          >
-            <Link
-              href="/"
-              aria-current="page"
-              className="shrink-0 rounded-lg bg-green-50 px-3 py-2 font-semibold text-green-800"
-            >
-              সব পণ্য
-            </Link>
-
-            {categories.map((category) => (
-              <Link
-                key={category.slug}
-                href={`/category/${category.slug}`}
-                className="shrink-0 rounded-lg px-3 py-2 text-gray-600 hover:bg-green-50 hover:text-green-800"
-              >
-                {category.icon} {category.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      {!loading && products.length > 0 && (
-        <div className="ticker overflow-hidden border-b border-gray-200 bg-[#eef2e9] py-3">
-          <div className="ticker-track">
-            {[0, 1].map((copy) => (
-              <div
-                key={copy}
-                aria-hidden={copy === 1}
-                className="flex shrink-0"
-              >
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex items-center gap-2 px-5 text-sm"
-                  >
-                    <span>{product.image}</span>
-                    <span className="whitespace-nowrap">
-                      {product.nameBn} {banglaNumber(product.today)} টাকা/
-                      {units[product.unit] ?? product.unit}
-                    </span>
-                    <ChangeBadge product={product} />
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <section className="grid items-center gap-6 rounded-3xl border border-gray-200 bg-white p-6 sm:p-9 md:grid-cols-[1.6fr_1fr]">
+    <AccountShell>
+      <div className="mx-auto max-w-6xl">
+        <section className="grid items-center gap-8 rounded-3xl border border-gray-200 bg-white p-6 sm:p-9 lg:grid-cols-[1.5fr_1fr]">
           <div>
-            <span className="inline-block rounded-full bg-[#edf3e7] px-3 py-1.5 text-sm text-green-900">
+            <span className="inline-block rounded-full bg-green-50 px-3 py-1.5 text-sm text-green-800">
               {date || "প্রতিদিনের বাজার দর"}
             </span>
 
-            <h1 className="mt-4 text-3xl leading-tight font-bold sm:text-4xl">
+            <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
               আজকের বাজারের দাম এক নজরে
             </h1>
 
             <p className="mt-4 max-w-xl text-base leading-7 text-gray-600">
               চাল, ডাল, তেল, সবজি, মাছ, মাংস, ডিম ও মসলার দাম —
-              বাজারভিত্তিক বিস্তারিত, গড়, সর্বনিম্ন-সর্বাধিক এবং
-              দামের পরিবর্তন এক জায়গায়।
+              বাজারভিত্তিক বিস্তারিত, গড়, সর্বনিম্ন-সর্বাধিক এবং দামের
+              পরিবর্তন এক জায়গায়।
             </p>
 
             <a
-              href="#সব-পণ্য"
-              className="mt-6 inline-block rounded-lg bg-[#174b2b] px-5 py-3 font-semibold text-white hover:bg-green-900"
+              href="#all-products"
+              className="mt-6 inline-block rounded-lg bg-green-900 px-5 py-3 font-semibold text-white hover:bg-green-800"
             >
               সব পণ্য দেখুন
             </a>
           </div>
 
-          <Image
-            src="/bazar-hero.png"
-            alt="তাজা ফল ও সবজির ঝুড়ি"
-            width={400}
-            height={320}
-            priority
-            className="mx-auto h-auto w-full max-w-72 object-contain"
-          />
+          <div className="grid grid-cols-3 divide-x divide-green-100 rounded-2xl border border-green-100 bg-green-50/60 p-5">
+            {stats.map((stat) => (
+              <div key={stat.label} className="px-2 sm:px-4">
+                <p className="text-sm text-gray-600">{stat.label}</p>
+
+                <p className="mt-2 text-3xl font-bold text-green-900">
+                  {loading || error ? "—" : banglaNumber(stat.value)}
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-gray-600">
+                  {stat.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <div className="mt-10 space-y-10">
@@ -377,9 +357,11 @@ export default function Home() {
               className="rounded-2xl border border-red-200 bg-white p-8 text-center"
             >
               <p className="text-red-700">{error}</p>
+
               <button
+                type="button"
                 onClick={retry}
-                className="mt-4 rounded-lg bg-[#174b2b] px-5 py-2 text-white"
+                className="mt-4 rounded-lg bg-green-900 px-5 py-2 text-white hover:bg-green-800"
               >
                 আবার চেষ্টা করুন
               </button>
@@ -391,17 +373,19 @@ export default function Home() {
           ) : (
             <>
               <ProductSection
-                title="▲ আজ দাম বেড়েছে"
+                title="আজ দাম বেড়েছে"
+                direction="up"
                 products={risers}
               />
 
               <ProductSection
-                title="▼ আজ দাম কমেছে"
+                title="আজ দাম কমেছে"
+                direction="down"
                 products={fallers}
               />
 
               <ProductSection
-                id="সব-পণ্য"
+                id="all-products"
                 title="সব পণ্য"
                 subtitle={`মোট ${banglaNumber(products.length)}টি পণ্য দেখানো হচ্ছে`}
                 products={products}
@@ -409,19 +393,7 @@ export default function Home() {
             </>
           )}
         </div>
-      </main>
-
-      <footer className="mt-10 border-t border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 px-4 py-6 text-sm text-gray-600 sm:px-6 md:flex-row">
-          <p>
-            <span className="font-bold text-green-900">বাজার দর</span>
-            {" "}— প্রয়োজনীয় পণ্যের দাম এক নজরে।
-          </p>
-          <p>
-            সকল দাম সম্ভাব্য; বাজার অবস্থার ওপর নির্ভর করে পরিবর্তিত হয়।
-          </p>
-        </div>
-      </footer>
-    </>
+      </div>
+    </AccountShell>
   );
 }
