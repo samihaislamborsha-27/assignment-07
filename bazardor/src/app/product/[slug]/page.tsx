@@ -319,7 +319,7 @@ export default function ProductPage() {
                 </p>
               ) : (
                 <div className="mt-5 overflow-x-auto">
-                  <table className="w-full -[155px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[155] border-collapse text-left text-sm">
                     <caption className="sr-only">
                       {product.nameBn} এর বাজারভিত্তিক দাম
                     </caption>
