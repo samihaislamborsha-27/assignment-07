@@ -192,7 +192,17 @@ export default function AccountShell({
               অপেক্ষা করুন…
             </span>
           ) : session ? (
-            <details className="group relative">
+            <details
+            className="group relative"
+            onKeyDown={(event) => {
+            if (event.key === "Escape") {
+            event.currentTarget.open = false;
+            event.currentTarget
+            .querySelector<HTMLElement>("summary")
+            ?.focus();
+              }
+              }}
+              >
               <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 hover:bg-green-50 [&::-webkit-details-marker]:hidden">
                 <Avatar
                   image={session.user.image}
