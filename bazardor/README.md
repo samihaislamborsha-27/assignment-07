@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# বাজার দর / BazarDor
 
-## Getting Started
+A Bangla grocery price website for checking daily prices,
+comparing markets, and tracking price changes.
 
-First, run the development server:
+## Links
+- Live website: To be added after deployment
+- GitHub: https://github.com/samihaislamborsha-27/assignment-07
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Technologies
+Next.js, React, TypeScript, Tailwind CSS, Better Auth,
+MongoDB, and React Hot Toast.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
+1. Daily grocery prices with Bengali numbers and units.
+2. Top six price increases and decreases on the homepage.
+3. Eight product categories with numeric price sorting.
+4. Email/password, Google, and GitHub authentication.
+5. Protected product details with market comparisons.
+6. Minimum, maximum, and average price summaries.
+7. Dedicated profile editing for names and photos.
+8. Responsive layouts for mobile, tablet, and desktop.
+9. Scrolling price ticker and active category navigation.
+10. Loading skeletons, notifications, and a Bangla 404 page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local Setup
+Run npm install inside the bazardor folder.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Configure .env.local with:
+MONGODB_URI, MONGODB_DB, BETTER_AUTH_URL, BETTER_AUTH_SECRET,
+GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+GITHUB_CLIENT_ID, and GITHUB_CLIENT_SECRET.
 
-## Learn More
+For local development, use:
+BETTER_AUTH_URL=http://localhost:3000
 
-To learn more about Next.js, take a look at the following resources:
+OAuth callback URLs:
+Google: http://localhost:3000/api/auth/callback/google
+GitHub: http://localhost:3000/api/auth/callback/github
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run npm run dev and open http://localhost:3000.
+Keep .env.local out of Git.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Production
+Build: npm run build
+Start: npm run start
 
-## Deploy on Vercel
+## Data Sources
+Primary: https://api.api-store.workers.dev/api/bazardor
+Alternative: https://api.abcz.workers.dev/api/bazardor
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Prices are indicative and may vary by market.
