@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
 
 const categories = [
@@ -55,6 +56,7 @@ function Avatar({
   return (
     <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-green-100 font-semibold text-green-900">
       {image && failedImage !== image ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={image}
           alt=""
@@ -113,21 +115,25 @@ export default function AccountShell({
           const body = await response.json();
           const list = Array.isArray(body)
             ? body
-            : body.products ?? body.data?.products ?? body.data;
+            : body?.products ?? body?.data?.products ?? body?.data;
 
           if (!Array.isArray(list)) continue;
 
+          const validProducts: Product[] = list.filter(
+            (item) =>
+              item &&
+              typeof item.nameBn === "string" &&
+              typeof item.unit === "string" &&
+              typeof item.today === "number" &&
+              Number.isFinite(item.today) &&
+              item.change &&
+              typeof item.change.dir === "string" &&
+              typeof item.change.pct === "number" &&
+              Number.isFinite(item.change.pct),
+          );
+
           if (!controller.signal.aborted) {
-            setProducts(
-              list.filter(
-                (item) =>
-                  item &&
-                  typeof item.nameBn === "string" &&
-                  typeof item.today === "number" &&
-                  item.change &&
-                  typeof item.change.pct === "number",
-              ),
-            );
+            setProducts(validProducts);
           }
 
           return;
@@ -142,6 +148,11 @@ export default function AccountShell({
     return () => controller.abort();
   }, []);
 
+  function showSignoutError(message: string) {
+    setSignoutError(message);
+    toast.error(message);
+  }
+
   async function signout() {
     if (leaving) return;
 
@@ -152,14 +163,15 @@ export default function AccountShell({
       const result = await authClient.signOut();
 
       if (result.error) {
-        setSignoutError("সাইন আউট করা যায়নি। আবার চেষ্টা করুন।");
+        showSignoutError("সাইন আউট করা যায়নি। আবার চেষ্টা করুন।");
         return;
       }
 
+      toast.success("সফলভাবে সাইন আউট হয়েছে।");
       router.replace("/signin");
       router.refresh();
     } catch {
-      setSignoutError("সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      showSignoutError("সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
     } finally {
       setLeaving(false);
     }
@@ -168,8 +180,11 @@ export default function AccountShell({
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 text-gray-900">
       <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <Link href="/" className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:gap-4 sm:px-6">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green-800"
+          >
             <span
               aria-hidden="true"
               className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-green-900 text-xl text-white"
@@ -177,10 +192,11 @@ export default function AccountShell({
               🛒
             </span>
 
-            <span>
+            <span className="min-w-0">
               <span className="block text-xl font-bold">
                 বাজার দর
               </span>
+
               <span className="mt-1 block text-xs text-gray-600 sm:text-sm">
                 {date || "প্রতিদিনের বাজারের দাম"}
               </span>
@@ -188,22 +204,22 @@ export default function AccountShell({
           </Link>
 
           {isPending ? (
-            <span className="text-sm text-gray-500">
+            <span role="status" className="text-sm text-gray-500">
               অপেক্ষা করুন…
             </span>
           ) : session ? (
             <details
-            className="group relative"
-            onKeyDown={(event) => {
-            if (event.key === "Escape") {
-            event.currentTarget.open = false;
-            event.currentTarget
-            .querySelector<HTMLElement>("summary")
-            ?.focus();
-              }
+              className="group relative ml-auto shrink-0"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.open = false;
+                  event.currentTarget
+                    .querySelector<HTMLElement>("summary")
+                    ?.focus();
+                }
               }}
-              >
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 hover:bg-green-50 [&::-webkit-details-marker]:hidden">
+            >
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800 [&::-webkit-details-marker]:hidden">
                 <Avatar
                   image={session.user.image}
                   name={session.user.name}
@@ -222,7 +238,7 @@ export default function AccountShell({
               </summary>
 
               <div className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[85vw] rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
-                <p className="wrap-break-words font-semibold">
+                <p className="font-semibold wrap-anywhere">
                   {session.user.name}
                 </p>
 
@@ -234,9 +250,11 @@ export default function AccountShell({
                   <Link
                     href="/profile"
                     onClick={(event) =>
-                      event.currentTarget.closest("details")?.removeAttribute("open")
+                      event.currentTarget
+                        .closest("details")
+                        ?.removeAttribute("open")
                     }
-                    className="block rounded-lg px-3 py-2 text-sm hover:bg-green-50"
+                    className="block rounded-lg px-3 py-2 text-sm hover:bg-green-50 focus-visible:outline-2 focus-visible:outline-green-800"
                   >
                     👤 আমার প্রোফাইল
                   </Link>
@@ -245,13 +263,16 @@ export default function AccountShell({
                     type="button"
                     onClick={signout}
                     disabled={leaving}
-                    className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 disabled:opacity-60"
+                    className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-60"
                   >
                     {leaving ? "অপেক্ষা করুন…" : "↪ সাইন আউট"}
                   </button>
 
                   {signoutError && (
-                    <p role="alert" className="mt-2 text-xs text-red-700">
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs leading-5 text-red-700"
+                    >
                       {signoutError}
                     </p>
                   )}
@@ -259,17 +280,17 @@ export default function AccountShell({
               </div>
             </details>
           ) : (
-            <div className="flex shrink-0 gap-2 text-sm">
+            <div className="ml-auto flex shrink-0 gap-2 text-sm">
               <Link
                 href="/signin"
-                className="rounded-lg px-3 py-2 hover:bg-gray-50"
+                className="rounded-lg px-3 py-2 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-green-800"
               >
                 সাইন ইন
               </Link>
 
               <Link
                 href="/signup"
-                className="rounded-lg bg-green-900 px-3 py-2 text-white hover:bg-green-800"
+                className="rounded-lg bg-green-900 px-3 py-2 text-white hover:bg-green-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800"
               >
                 সাইন আপ
               </Link>
@@ -289,7 +310,7 @@ export default function AccountShell({
                 key={slug}
                 href={`/category/${slug}`}
                 aria-current={active ? "page" : undefined}
-                className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm sm:text-base ${
+                className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-800 sm:text-base ${
                   active
                     ? "bg-green-900 text-white"
                     : "hover:bg-green-50"
@@ -304,7 +325,11 @@ export default function AccountShell({
       </header>
 
       {products.length > 0 && (
-        <div className="overflow-hidden border-b border-green-100 bg-green-50 py-3">
+        <div
+          role="region"
+          aria-label="আজকের বাজারের দাম"
+          className="overflow-hidden border-b border-green-100 bg-green-50 py-3"
+        >
           <div className="account-price-track flex w-max">
             {[0, 1].map((copy) => (
               <div
@@ -312,43 +337,48 @@ export default function AccountShell({
                 aria-hidden={copy === 1 ? true : undefined}
                 className="flex shrink-0 items-center gap-8 pr-8"
               >
-                {products.map((product) => (
-                  <span
-                    key={product.id}
-                    className="flex items-center gap-2 whitespace-nowrap text-sm"
-                  >
-                    <span aria-hidden="true">{product.image}</span>
-                    <span>{product.nameBn}</span>
-                    <span>
-                      {number(product.today)} টাকা/
-                      {units[product.unit] ?? product.unit}
-                    </span>
+                {products.map((product, index) => {
+                  const up = product.change.dir === "up";
+                  const down = product.change.dir === "down";
 
+                  return (
                     <span
-                      className={
-                        product.change.dir === "up"
-                          ? "font-semibold text-red-700"
-                          : product.change.dir === "down"
-                            ? "font-semibold text-green-700"
-                            : "text-gray-500"
-                      }
+                      key={`${product.id}-${index}`}
+                      className="flex items-center gap-2 whitespace-nowrap text-sm"
                     >
-                      {product.change.dir === "up"
-                        ? "▲"
-                        : product.change.dir === "down"
-                          ? "▼"
-                          : "—"}{" "}
-                      {number(Math.abs(product.change.pct), 1)}%
+                      <span aria-hidden="true">
+                        {product.image || "🛒"}
+                      </span>
+
+                      <span>{product.nameBn}</span>
+
+                      <span>
+                        {number(product.today)} টাকা/
+                        {units[product.unit] ?? product.unit}
+                      </span>
+
+                      <span
+                        className={`font-semibold ${
+                          up
+                            ? "text-green-700"
+                            : down
+                              ? "text-red-700"
+                              : "text-gray-500"
+                        }`}
+                      >
+                        {up ? "▲" : down ? "▼" : "—"}{" "}
+                        {number(Math.abs(product.change.pct), 1)}%
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <main className="flex-1 px-4 py-12 sm:px-6 sm:py-14">
+      <main className="min-w-0 flex-1 px-4 py-12 sm:px-6 sm:py-14">
         {children}
       </main>
 
